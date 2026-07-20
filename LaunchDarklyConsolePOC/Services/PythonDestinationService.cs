@@ -21,6 +21,5 @@ public sealed class PythonDestinationService : IDestinationService
         Console.WriteLine($"  Account     : {order.AccountId}");
         Console.WriteLine($"  Destination : Python");
         Console.ResetColor();
-        Console.WriteLine();
     }
 }

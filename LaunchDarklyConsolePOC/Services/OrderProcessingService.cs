@@ -47,12 +47,32 @@ public sealed class OrderProcessingService : IOrderProcessor
         var verbose  = orders.Count <= VerboseThreshold;
         var progress = orders.Count / 10; // emit a progress line every 10 % in compact mode
 
+        // Tracks the first-seen variation for each AccountId so we can annotate
+        // subsequent occurrences and prove deterministic routing in real time.
+        // key = AccountId, value = (firstVariation, occurrencesSoFar)
+        var seen = new Dictionary<string, (string Variation, int Count)>(StringComparer.OrdinalIgnoreCase);
+
         for (int i = 0; i < orders.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var order     = orders[i];
             var variation = _routing.EvaluateVariation(order.AccountId);
+
+            // Determine whether this account has been seen before.
+            bool isRepeat = seen.TryGetValue(order.AccountId, out var prior);
+            int occurrenceNumber;
+
+            if (isRepeat)
+            {
+                occurrenceNumber = prior.Count + 1;
+                seen[order.AccountId] = (prior.Variation, occurrenceNumber);
+            }
+            else
+            {
+                occurrenceNumber = 1;
+                seen[order.AccountId] = (variation, 1);
+            }
 
             // Resolve the destination service by variation name (case-insensitive).
             // Falls back to the first registered service (Python) when the variation
@@ -63,19 +83,50 @@ public sealed class OrderProcessingService : IOrderProcessor
 
             if (verbose)
             {
-                // Full 3-line format as specified in requirements
+                // destination.Process prints the 3-line order block (no trailing blank line).
                 destination.Process(order);
+
+                // If this account has appeared before, annotate immediately below the
+                // order block so the viewer can see deterministic routing in action.
+                if (isRepeat)
+                {
+                    // Consistent: same variation as first occurrence — expected behaviour.
+                    // Inconsistent: should never happen with LaunchDarkly; shown for clarity.
+                    bool consistent = string.Equals(variation, prior.Variation, StringComparison.OrdinalIgnoreCase);
+
+                    Console.ForegroundColor = consistent ? ConsoleColor.Cyan : ConsoleColor.Red;
+                    Console.WriteLine(consistent
+                        ? $"  ↩ Repeat #{occurrenceNumber} of {order.AccountId} — CONSISTENT ✓  (same as occurrence #1)"
+                        : $"  ↩ Repeat #{occurrenceNumber} of {order.AccountId} — MISMATCH ✗  (was {prior.Variation}, now {variation})");
+                    Console.ResetColor();
+                }
+
+                Console.WriteLine(); // blank separator between order blocks
             }
             else
             {
-                // Compact single-line format for high-volume performance runs
+                // Compact single-line format for high-volume performance runs.
                 var color = variation.Equals("python", StringComparison.OrdinalIgnoreCase)
                     ? ConsoleColor.Yellow
                     : ConsoleColor.Green;
 
                 Console.ForegroundColor = color;
-                Console.WriteLine($"  {order.OrderId}  {order.AccountId,-15}  {variation.ToUpperInvariant()}");
+
+                if (isRepeat)
+                    Console.Write($"  {order.OrderId}  {order.AccountId,-15}  {variation.ToUpperInvariant()}");
+                else
+                    Console.Write($"  {order.OrderId}  {order.AccountId,-15}  {variation.ToUpperInvariant()}");
+
                 Console.ResetColor();
+
+                if (isRepeat)
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.Write($"  ↩ #{occurrenceNumber}");
+                    Console.ResetColor();
+                }
+
+                Console.WriteLine();
 
                 // Progress indicator every 10 %
                 if (progress > 0 && (i + 1) % progress == 0)

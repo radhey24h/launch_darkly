@@ -21,6 +21,5 @@ public sealed class DotNetDestinationService : IDestinationService
         Console.WriteLine($"  Account     : {order.AccountId}");
         Console.WriteLine($"  Destination : DotNet");
         Console.ResetColor();
-        Console.WriteLine();
     }
 }
