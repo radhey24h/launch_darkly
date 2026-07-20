@@ -90,7 +90,7 @@ public sealed class OrderProcessingService : IOrderProcessor
             results.Add(new ProcessingResult { Order = order, Variation = variation });
         }
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Processed {Count} orders. Verbose={Verbose}",
             orders.Count, verbose);
 

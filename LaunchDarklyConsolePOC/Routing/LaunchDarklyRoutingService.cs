@@ -46,13 +46,15 @@ public sealed class LaunchDarklyRoutingService : IRoutingService
         // blocks while the SDK fetches the initial flag state from LaunchDarkly.
         // After that timeout the SDK is still usable; it continues streaming updates.
         //
-        // Logging: route SDK-internal logs through its own Logs.ToConsole adapter but
-        // filter below Warn level so INFO/DEBUG lines don't clutter demo output.
-        // WARN and ERROR messages (e.g. invalid key, connection failure) still appear
-        // so operators are notified of real problems.
+        // Suppress the SDK's own console logger entirely.
+        // Every SDK state transition that matters to the demo is already
+        // surfaced via _client.Initialized (checked below) and through
+        // the ILogger.LogWarning / LogInformation calls.
+        // Keeping the SDK silent prevents interleaved SDK WARN/ERROR lines
+        // from breaking the per-order output during presentations.
         var config = LdConfig.Builder(opts.SdkKey)
             .StartWaitTime(TimeSpan.FromSeconds(opts.StartWaitTimeSeconds))
-            .Logging(Logs.ToConsole.Level(LdLogLevel.Warn))
+            .Logging(Logs.None)
             .Build();
 
         _client = new LdClient(config);
@@ -72,12 +74,13 @@ public sealed class LaunchDarklyRoutingService : IRoutingService
     /// <inheritdoc />
     public string EvaluateVariation(string accountId)
     {
-        // Build a single-kind context with kind "account".
-        // The SDK's deterministic hashing operates on (kind + key), ensuring that
-        // the same accountId always maps to the same variation bucket.
-        var context = Context.Builder(accountId)
-            .Kind(ContextKind.Of("account"))
-            .Build();
+        // Context.New(key) creates a single-kind context with the default kind "user".
+        // This matches exactly how LaunchDarklyWorkerPOC evaluates the same flag:
+        //   WorkerPOC → Context.New(accountId)
+        // The middleware-routing flag in LaunchDarkly is configured to roll out
+        // "By user key", so the context kind must be "user" for the percentage split
+        // (80% Python / 20% DotNet) to apply correctly.
+        var context = Context.New(accountId);
 
         return _client.StringVariation(_featureFlagKey, context, _defaultVariation);
     }
