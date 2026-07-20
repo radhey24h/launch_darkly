@@ -1,0 +1,321 @@
+{
+  "info": {
+    "name": "LaunchDarkly Canary POC",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "Postman collection for testing the LaunchDarkly Canary Deployment POC.\n\n## How to use\n1. Import this collection into Postman\n2. Ensure all three services are running\n3. Run the requests in order\n4. Observe the `selectedVariation` field to confirm routing\n\n## Sticky Routing\nEach userId always routes to the same backend.\nThe variation is determined by LaunchDarkly's deterministic hash of the userId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Gateway base URL"
+    },
+    {
+      "key": "dotnetBackendUrl",
+      "value": "http://localhost:5001",
+      "type": "string",
+      "description": ".NET Backend base URL"
+    },
+    {
+      "key": "pythonBackendUrl",
+      "value": "http://localhost:8000",
+      "type": "string",
+      "description": "Python Backend base URL"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/health",
+            "description": "Check Gateway health. Should return 200 with LaunchDarkly SDK status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has status field', () => {",
+                  "  const body = pm.response.text();",
+                  "  pm.expect(body).to.include('healthy');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": ".NET Backend Health",
+          "request": {
+            "method": "GET",
+            "url": "{{dotnetBackendUrl}}/health",
+            "description": "Check .NET backend health."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Python Backend Health",
+          "request": {
+            "method": "GET",
+            "url": "{{pythonBackendUrl}}/health",
+            "description": "Check Python backend health."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📦 Orders via Gateway (Canary Routing)",
+      "description": "These requests go through the Gateway and are routed by LaunchDarkly.\nObserve the `selectedVariation` field to see which backend was used.\nThe same userId always gets the same backend (sticky routing).",
+      "item": [
+        {
+          "name": "GET Order — alice",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/alice",
+            "description": "alice's request. Observe selectedVariation. Run multiple times — always same result."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has selectedVariation', () => pm.expect(json.selectedVariation).to.be.oneOf(['dotnet', 'python']));",
+                  "pm.test('Has correlationId', () => pm.expect(json.correlationId).to.be.a('string'));",
+                  "pm.test('Has elapsedMs', () => pm.expect(json.elapsedMs).to.be.a('number'));",
+                  "console.log('alice variation:', json.selectedVariation);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Order — bob",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/bob",
+            "description": "bob's request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('bob variation:', pm.response.json().selectedVariation);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Order — charlie",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/charlie",
+            "description": "charlie's request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('charlie variation:', pm.response.json().selectedVariation);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Order — david",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/david",
+            "description": "david's request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('david variation:', pm.response.json().selectedVariation);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Order — emma",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/emma",
+            "description": "emma's request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('emma variation:', pm.response.json().selectedVariation);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Order — user001 (likely dotnet bucket)",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/user001",
+            "description": "Try different userIds to find ones in the 10% dotnet bucket."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('user001 variation:', pm.response.json().selectedVariation);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔬 Sticky Routing Verification",
+      "description": "These tests verify that the same userId always gets the same variation.\nRun these multiple times — the variation should never change.",
+      "item": [
+        {
+          "name": "Sticky Test — alice (repeat 3x)",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/api/orders/alice",
+            "description": "Run this 3 times. selectedVariation must be identical every time."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "// Store first result in environment",
+                  "const stored = pm.environment.get('alice_variation');",
+                  "if (!stored) {",
+                  "  pm.environment.set('alice_variation', json.selectedVariation);",
+                  "  console.log('Stored alice variation:', json.selectedVariation);",
+                  "} else {",
+                  "  pm.test('Sticky routing: alice always gets same variation', () => {",
+                  "    pm.expect(json.selectedVariation).to.equal(stored);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔩 Direct Backend Calls (Bypass Gateway)",
+      "description": "Call backends directly — bypasses LaunchDarkly routing entirely.\nUseful for verifying each backend is working independently.",
+      "item": [
+        {
+          "name": "Direct — .NET Backend",
+          "request": {
+            "method": "GET",
+            "url": "{{dotnetBackendUrl}}/api/orders/testuser",
+            "description": "Direct call to .NET backend. Response should have backend='dotnet'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Backend is dotnet', () => pm.expect(pm.response.json().backend).to.equal('dotnet'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Direct — Python Backend",
+          "request": {
+            "method": "GET",
+            "url": "{{pythonBackendUrl}}/api/orders/testuser",
+            "description": "Direct call to Python backend. Response should have backend='python'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Backend is python', () => pm.expect(pm.response.json().backend).to.equal('python'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ℹ️ Version Endpoints",
+      "item": [
+        {
+          "name": "Gateway Version",
+          "request": {
+            "method": "GET",
+            "url": "{{gatewayUrl}}/version"
+          }
+        },
+        {
+          "name": ".NET Backend Version",
+          "request": {
+            "method": "GET",
+            "url": "{{dotnetBackendUrl}}/version"
+          }
+        },
+        {
+          "name": "Python Backend Version",
+          "request": {
+            "method": "GET",
+            "url": "{{pythonBackendUrl}}/version"
+          }
+        }
+      ]
+    }
+  ]
+}

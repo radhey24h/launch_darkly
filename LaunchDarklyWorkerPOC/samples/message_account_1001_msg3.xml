@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionMessage>
+  <AccountId>1001</AccountId>
+  <CustomerId>CUST-A001</CustomerId>
+  <TransactionId>TXN-20260715-0003</TransactionId>
+  <Amount>875.00</Amount>
+  <Currency>USD</Currency>
+  <Timestamp>2026-07-15T05:00:04Z</Timestamp>
+  <Operation>PAYMENT</Operation>
+  <ReferenceNumber>REF-0003</ReferenceNumber>
+  <CorrelationId>CORR-1001-003</CorrelationId>
+  <Status>PENDING</Status>
+</TransactionMessage>

@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/DotNetMiddleware/">
+    <Project Path="src/DotNetMiddleware/LaunchDarklyPOC.DotNetMiddleware.csproj" />
+  </Folder>
+  <Folder Name="/src/MessageWorker/">
+    <Project Path="src/MessageWorker/LaunchDarklyPOC.MessageWorker.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/LaunchDarklyPOC.Shared/LaunchDarklyPOC.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/XmlProducer/">
+    <Project Path="src/XmlProducer/LaunchDarklyPOC.XmlProducer.csproj" />
+  </Folder>
+</Solution>

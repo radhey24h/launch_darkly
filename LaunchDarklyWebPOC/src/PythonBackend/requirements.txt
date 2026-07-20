@@ -1,0 +1,14 @@
+# Python Backend Dependencies
+# Install with: pip install -r requirements.txt
+
+# FastAPI — modern, high-performance web framework
+# https://fastapi.tiangolo.com/
+fastapi==0.115.5
+
+# Uvicorn — ASGI server for running FastAPI
+# Use uvicorn[standard] to include optional speedups (httptools, websockets, etc.)
+uvicorn[standard]==0.32.1
+
+# Pydantic — data validation (used by FastAPI internally)
+# Pin to v2.x for modern features
+pydantic==2.10.3

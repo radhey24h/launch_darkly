@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LaunchDarklyConsolePOC</RootNamespace>
+    <AssemblyName>LaunchDarklyConsolePOC</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <!--
+      Only two external dependencies are allowed in this project:
+        1. LaunchDarkly.ServerSdk  — the feature flag SDK (same major version as WorkerPOC)
+        2. Microsoft.Extensions.Hosting — brings DI, IConfiguration, ILogger, Options
+      Every other type used is either part of the BCL or transitive from these two.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LaunchDarkly.ServerSdk" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- appsettings.json must be deployed next to the binary in all configurations -->
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+**/.vs
+**/.git
+**/.idea
+**/bin
+**/obj
+**/__pycache__
+**/*.user
+**/node_modules
+*.md
+samples/

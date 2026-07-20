@@ -1,0 +1,119 @@
+# ============================================================
+# docker-compose.yml — LaunchDarkly Canary POC
+#
+# Services:
+#   gateway       — ASP.NET Core Gateway  (port 5000)
+#   dotnetbackend — .NET Minimal API      (port 5001)
+#   pythonbackend — Python FastAPI        (port 8000)
+#
+# Usage:
+#   1. Set your LaunchDarkly SDK key:
+#      Windows: set LAUNCHDARKLY_SDK_KEY=sdk-your-key-here
+#      Linux/Mac: export LAUNCHDARKLY_SDK_KEY=sdk-your-key-here
+#
+#   2. Build and run all services:
+#      docker-compose up --build
+#
+#   3. Test the Gateway:
+#      curl http://localhost:5000/api/orders/alice
+#
+#   4. Tear down:
+#      docker-compose down
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # PYTHON BACKEND (Mock TIBCO) — starts first, no dependencies
+  # ----------------------------------------------------------
+  pythonbackend:
+    build:
+      context: .
+      dockerfile: src/PythonBackend/Dockerfile
+    container_name: python-backend
+    ports:
+      # Host port 8080 → container port 8000
+      # (8000 is used by a local dev process; 8080 is free)
+      - "8080:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - canary-network
+
+  # ----------------------------------------------------------
+  # .NET BACKEND (New Service)
+  # ----------------------------------------------------------
+  dotnetbackend:
+    build:
+      context: .
+      dockerfile: src/DotNetBackend/Dockerfile
+    container_name: dotnet-backend
+    ports:
+      # Host port 5011 → container port 5001
+      # (5001 is used by a local dev process; 5011 is free)
+      - "5011:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - canary-network
+
+  # ----------------------------------------------------------
+  # GATEWAY — depends on both backends
+  # The LaunchDarkly SDK key is passed as an environment variable.
+  # NEVER hardcode it here.
+  # ----------------------------------------------------------
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Dockerfile
+    container_name: gateway
+    ports:
+      # Host port 5010 → container port 5000
+      # (5000 is reserved by Windows Hyper-V; 5010 is free)
+      - "5010:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      # !! Set this environment variable before running docker-compose !!
+      # Windows: set LAUNCHDARKLY_SDK_KEY=sdk-xxxx
+      # Linux:   export LAUNCHDARKLY_SDK_KEY=sdk-xxxx
+      - LaunchDarkly__SdkKey=${LAUNCHDARKLY_SDK_KEY:-sdk-REPLACE-WITH-YOUR-KEY}
+      # In Docker, use container names as hostnames (Docker DNS)
+      - Backends__DotNetBackendUrl=http://dotnetbackend:5001
+      - Backends__PythonBackendUrl=http://pythonbackend:8000
+    depends_on:
+      dotnetbackend:
+        condition: service_healthy
+      pythonbackend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - canary-network
+
+# ----------------------------------------------------------
+# SHARED NETWORK
+# All three services communicate over this internal network.
+# The Gateway can reach backends by container name (Docker DNS).
+# ----------------------------------------------------------
+networks:
+  canary-network:
+    driver: bridge
